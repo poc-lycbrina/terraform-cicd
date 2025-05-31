@@ -15,11 +15,11 @@ generic_info = {
 /*                                 Networking                                 */
 /* -------------------------------------------------------------------------- */
 networking_info = {
-  vpc_id               = "vpc-0d6be2c0fe8bb363a",
-  public_subnet_ids    = ["subnet-0bf984e955b2fdf80", "subnet-0fc8af97031f83e5c"]
-  private_subnet_ids   = ["subnet-086ed7598eaecd0fa", "subnet-00a72389ec5a63220"]
-  database_subnet_ids  = ["subnet-0ae7f81fb2ff6106d", "subnet-0dc4eee4d0eb58361"]
-  route_table_ids      = ["rtb-005afb677d41f6ad0", "rtb-0644c7d6364d5ad65"] # [Private, Public]
+  vpc_id              = "vpc-0d6be2c0fe8bb363a",
+  public_subnet_ids   = ["subnet-0bf984e955b2fdf80", "subnet-0fc8af97031f83e5c"]
+  private_subnet_ids  = ["subnet-086ed7598eaecd0fa", "subnet-00a72389ec5a63220"]
+  database_subnet_ids = ["subnet-0ae7f81fb2ff6106d", "subnet-0dc4eee4d0eb58361"]
+  route_table_ids     = ["rtb-005afb677d41f6ad0", "rtb-0644c7d6364d5ad65"] # [Private, Public]
 }
 
 
