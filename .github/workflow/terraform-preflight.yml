@@ -1,0 +1,139 @@
+name: Terraform CI/CD Entry Point
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  # PR to DEV branch
+  pr-dev:
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      opa_check: true
+      backend_config: backend.dev.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # Push to DEV
+  push-dev-plan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      backend_config: backend.dev.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  push-dev-approval:
+    needs: push-dev-plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: https://dev.example.com
+    steps:
+      - run: echo "Manual approval for dev"
+
+  push-dev-apply:
+    needs: push-dev-approval
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      apply: true
+      backend_config: backend.dev.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # PR from DEV to MAIN
+  pr-main-uat:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      opa_check: true
+      backend_config: backend.uat.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  pr-main-prod:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      opa_check: true
+      backend_config: backend.prod.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # Push to MAIN (merge)
+  main-uat-plan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      backend_config: backend.uat.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  main-uat-approval:
+    needs: main-uat-plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: uat
+    steps:
+      - run: echo "Manual UAT approval"
+
+  main-uat-apply:
+    needs: main-uat-approval
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      apply: true
+      backend_config: backend.uat.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  main-prod-plan:
+    needs: main-uat-apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      backend_config: backend.prod.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  main-prod-approval:
+    needs: main-prod-plan
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - run: echo "Manual PROD approval"
+
+  main-prod-apply:
+    needs: main-prod-approval
+    uses: ./.github/workflows/terraform-cicd.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      apply: true
+      backend_config: backend.prod.tfbackend
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
