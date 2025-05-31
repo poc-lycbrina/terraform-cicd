@@ -27,7 +27,6 @@ variable "networking_info" {
     public_subnet_ids    = list(string)
     private_subnet_ids   = list(string)
     database_subnet_ids  = list(string)
-    secondary_subnet_ids = list(string)
     route_table_ids      = list(string)
   })
 }
