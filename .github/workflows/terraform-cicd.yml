@@ -82,7 +82,10 @@ jobs:
             --output text)
 
           # Parse each key into TF_VAR_ environment variables
-          echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "TF_VAR_\(.key)=\(.value)"' >> "$GITHUB_ENV"
+          echo "$SECRET_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while IFS='=' read -r key value; do
+            echo "::add-mask::$value"                     
+            echo "TF_VAR_$key=$value" >> "$GITHUB_ENV"    
+          done
 
 
       - name: Terraform Plan
