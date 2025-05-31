@@ -14,7 +14,7 @@ on:
           - prod
 
 jobs:
-  deploy:
+  destroy:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -63,7 +63,7 @@ jobs:
   unlock-state:
     runs-on: ubuntu-latest
     if: always()  # <-- This ensures it runs even if terraform job fails
-    needs: terraform
+    needs: destroy
     permissions:
       id-token: write
       contents: read
