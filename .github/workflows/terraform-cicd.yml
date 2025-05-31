@@ -70,6 +70,20 @@ jobs:
         uses: triat/terraform-security-scan@v3
         continue-on-error: true
 
+      - id: install-aws-cli
+        uses: unfor19/install-aws-cli-action@v1
+
+      - name: Load secrets from AWS Secrets Manager
+        id: secrets
+        run: |
+          SECRET_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id arn:aws:secretsmanager:ap-southeast-7:140023376669:secret:test-4YV1Ej \
+            --query SecretString \
+            --output text)
+
+          # Parse each key into TF_VAR_ environment variables
+          echo "$SECRET_JSON" | jq -r 'to_entries | .[] | "TF_VAR_\(.key)=\(.value)"' >> "$GITHUB_ENV"
+
 
       - name: Terraform Plan
         run: terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan
