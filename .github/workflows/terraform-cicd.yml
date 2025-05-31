@@ -94,7 +94,7 @@ jobs:
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
           chmod +x opa
           mv opa /usr/local/bin/
-          result=$(./opa eval --input terraform.plan.json --data .github/workflows/terraform_tag.rego "data.terraform.validation")
+          result=$(opa eval --input terraform.plan.json --data .github/workflows/terraform_tag.rego "data.terraform.validation")
           echo $result
           violations=$(echo "$result" | jq '.result[0].expressions[0].value.deny | length')
           echo $violations
