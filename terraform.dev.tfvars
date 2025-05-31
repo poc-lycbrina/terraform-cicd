@@ -7,8 +7,8 @@ generic_info = {
   environment = "dev-th",
   name        = "app",
   custom_tags = {
-    Workspace = "cmrs-pass-dev"
-  }
+    Workspace = "cmrs-pass-dev",
+    Project     = "projectA"}
 }
 
 /* -------------------------------------------------------------------------- */

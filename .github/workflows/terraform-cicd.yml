@@ -103,7 +103,7 @@ jobs:
 
           if [ "$violations" -gt 0 ]; then
             echo "❌ Policy violations detected:"
-            echo "$result" | jq -r '.result[0].expressions[0].value.deny[]'
+            echo "$result" | jq -r '.result[0].expressions[0].value.deny'
             exit 1
           else
             echo "✅ No policy violations detected!"
