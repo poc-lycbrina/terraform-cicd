@@ -89,17 +89,6 @@ variable "rds_credential" {
   sensitive = true
 }
 
-variable "app_db_credential" {
-  description = <<EOF
-  username >> (Required unless a snapshot_identifier or replicate_source_db is provided) Username for the master DB user. Cannot be specified for a replica.
-  password >> (Required unless a snapshot_identifier or replicate_source_db is provided) Password for the master DB user. Note that this may show up in logs, and it will be stored in the state file.
-  EOF
-  type = object({
-    username = string
-    password = string
-  })
-  sensitive = true
-}
 
 variable "rds_backup_retention_period" {
   description = "The days to retain backups for. Mostly, for non-production is 7 days and production is 30 days. Default to 7 days"
