@@ -93,7 +93,8 @@ jobs:
       - name: OPA Check
         if: ${{ inputs.opa_check }}
         run: |
-          curl -L https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz | tar xz
+          wget "https://github.com/open-policy-agent/conftest/releases/download/v0.61.0/conftest_0.61.0_Darwin_x86_64.tar.gz" 
+          tar xzf conftest_0.61.0_Darwin_x86_64.tar.gz
           sudo mv conftest /usr/local/bin
           conftest test tfplan.json --policy .github/workflows/policy/
 
