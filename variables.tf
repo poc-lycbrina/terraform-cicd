@@ -23,11 +23,11 @@ variable "networking_info" {
   `database_subnet_ids` >> private subnets for ElastiCache cluster
   EOF
   type = object({
-    vpc_id               = string
-    public_subnet_ids    = list(string)
-    private_subnet_ids   = list(string)
-    database_subnet_ids  = list(string)
-    route_table_ids      = list(string)
+    vpc_id              = string
+    public_subnet_ids   = list(string)
+    private_subnet_ids  = list(string)
+    database_subnet_ids = list(string)
+    route_table_ids     = list(string)
   })
 }
 
