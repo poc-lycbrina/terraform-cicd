@@ -93,23 +93,27 @@ jobs:
       - name: OPA Check
         if: ${{ inputs.opa_check }}
         run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
-          chmod +x opa
-          mv opa /usr/local/bin/
-          result=$(opa eval --input tfplan.json --data .github/workflows/terraform_tag.rego "data.terraform.validation")
-          echo $result
-          violations=$(echo "$result" | jq '.result[0].expressions[0].value.deny | length')
-          echo $violations
+          curl -L https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_Linux_x86_64.tar.gz | tar xz
+          sudo mv conftest /usr/local/bin
+          conftest test tfplan.json --policy .github/workflows/policy/
 
-          if [ "$violations" -gt 0 ]; then
-            echo "❌ Policy violations detected:"
-            echo "$result" | jq -r '.result[0].expressions[0].value.deny[]'
-            exit 1
-          else
-            echo "✅ No policy violations detected!"
-          fi
+          # curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
+          # chmod +x opa
+          # mv opa /usr/local/bin/
+          # result=$(opa eval --input tfplan.json --data .github/workflows/terraform_tag.rego "data.terraform.validation")
+          # echo $result
+          # violations=$(echo "$result" | jq '.result[0].expressions[0].value.deny | length')
+          # echo $violations
 
-          ./opa eval --input terraform.plan.json --data opa/ "data.terraform.deny"
+          # if [ "$violations" -gt 0 ]; then
+          #   echo "❌ Policy violations detected:"
+          #   echo "$result" | jq -r '.result[0].expressions[0].value.deny[]'
+          #   exit 1
+          # else
+          #   echo "✅ No policy violations detected!"
+          # fi
+
+          # ./opa eval --input terraform.plan.json --data opa/ "data.terraform.deny"
 
       - name: Terraform Apply
         if: ${{ inputs.apply }}
