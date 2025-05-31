@@ -36,7 +36,9 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v3
