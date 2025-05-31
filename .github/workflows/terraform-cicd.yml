@@ -135,7 +135,7 @@ jobs:
 
       - name: Remove DynamoDB Lock
         env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_REGION: ${{ inputs.REGION }}
         run: |
           # Replace with your actual LockID and table name
           LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
