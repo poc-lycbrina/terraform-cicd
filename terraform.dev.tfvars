@@ -8,7 +8,7 @@ generic_info = {
   name        = "app",
   custom_tags = {
     Workspace = "cmrs-pass-dev",
-    Project     = "projectA"}
+  Project = "projectA" }
 }
 
 /* -------------------------------------------------------------------------- */
