@@ -86,7 +86,9 @@ jobs:
 
 
       - name: Terraform Plan
-        run: terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan
+        run: |
+          terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan
+          terraform show -json plan.tfplan > tfplan.json
 
       - name: OPA Check
         if: ${{ inputs.opa_check }}
@@ -94,7 +96,7 @@ jobs:
           curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
           chmod +x opa
           mv opa /usr/local/bin/
-          result=$(opa eval --input plan.tfplan --data .github/workflows/terraform_tag.rego "data.terraform.validation")
+          result=$(opa eval --input tfplan.json --data .github/workflows/terraform_tag.rego "data.terraform.validation")
           echo $result
           violations=$(echo "$result" | jq '.result[0].expressions[0].value.deny | length')
           echo $violations
