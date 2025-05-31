@@ -19,7 +19,7 @@ jobs:
       environment: dev
       tfvars: terraform.dev.tfvars
       opa_check: true
-      backend_config: backend.dev.tfbackend
+      backend_config: backend.dev.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -30,7 +30,7 @@ jobs:
     with:
       environment: dev
       tfvars: terraform.dev.tfvars
-      backend_config: backend.dev.tfbackend
+      backend_config: backend.dev.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -52,7 +52,7 @@ jobs:
       environment: dev
       tfvars: terraform.dev.tfvars
       apply: true
-      backend_config: backend.dev.tfbackend
+      backend_config: backend.dev.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -64,7 +64,7 @@ jobs:
       environment: uat
       tfvars: terraform.uat.tfvars
       opa_check: true
-      backend_config: backend.uat.tfbackend
+      backend_config: backend.uat.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -75,7 +75,7 @@ jobs:
       environment: prod
       tfvars: terraform.prod.tfvars
       opa_check: true
-      backend_config: backend.prod.tfbackend
+      backend_config: backend.prod.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -86,7 +86,7 @@ jobs:
     with:
       environment: uat
       tfvars: terraform.uat.tfvars
-      backend_config: backend.uat.tfbackend
+      backend_config: backend.uat.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -105,7 +105,7 @@ jobs:
       environment: uat
       tfvars: terraform.uat.tfvars
       apply: true
-      backend_config: backend.uat.tfbackend
+      backend_config: backend.uat.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -116,7 +116,7 @@ jobs:
     with:
       environment: prod
       tfvars: terraform.prod.tfvars
-      backend_config: backend.prod.tfbackend
+      backend_config: backend.prod.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
@@ -134,6 +134,6 @@ jobs:
       environment: prod
       tfvars: terraform.prod.tfvars
       apply: true
-      backend_config: backend.prod.tfbackend
+      backend_config: backend.prod.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
