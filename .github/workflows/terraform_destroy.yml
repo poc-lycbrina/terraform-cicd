@@ -1,0 +1,45 @@
+name: Terraform destroy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Print selected environment
+        run: |
+          echo "Running for environment: ${{ github.event.inputs.environment }}"
+
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+          aws-region: ap-southeast-7
+    
+      - name: Terraform Init
+        run: terraform init -backend-config=backend.${{ github.event.inputs.environment }}.hcl -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+
+
+      - name: Terraform Plan
+        run: terraform plan -var-file=terraform.${{ github.event.inputs.environment }}.tfvars -out=plan.tfplan
+
+      - name: Terraform Plan
+        run: terraform apply -auto-approve plan.tfplan
+        
