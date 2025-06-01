@@ -68,7 +68,6 @@ jobs:
           title: Terraform Destroy Plan Summary
 
       - name: Upload plan artifact
-        if: ${{ inputs.apply }}
         uses: actions/upload-artifact@v4
         with:
             name: terraform-destroy-plan-${{ inputs.environment }}
