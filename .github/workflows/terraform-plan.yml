@@ -141,6 +141,14 @@ jobs:
       id-token: write
       contents: read
     steps:
+
+      - name: Check condition and cancel if not needed
+        run: |
+          if [[ "${{ inputs.apply }}" == "true" ]]; then
+            echo "Skipping unlock."
+            exit 78  # This cancels and fails the job
+          fi
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
