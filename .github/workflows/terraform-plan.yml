@@ -35,7 +35,6 @@ on:
 jobs:
   terraform-plan:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
     permissions:
       id-token: write
       contents: read
@@ -141,21 +140,15 @@ jobs:
       id-token: write
       contents: read
     steps:
-
-      - name: Check condition and cancel if not needed
-        run: |
-          if [[ "${{ inputs.apply }}" == "true" ]]; then
-            echo "Skipping unlock."
-            exit 78  # This cancels and fails the job
-          fi
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
+        if: ${{ inputs.apply }} == false
         with:
           role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
           aws-region: ${{ inputs.REGION }}
 
       - name: Remove DynamoDB Lock
+        if: ${{ inputs.apply }} == false
         env:
           AWS_REGION: ${{ inputs.REGION }}
         run: |
