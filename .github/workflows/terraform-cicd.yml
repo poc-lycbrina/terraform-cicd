@@ -31,6 +31,7 @@ jobs:
       environment: dev
       tfvars: terraform.dev.tfvars
       backend_config: backend.dev.hcl
+      apply: true
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
