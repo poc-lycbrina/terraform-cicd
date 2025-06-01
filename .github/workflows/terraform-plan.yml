@@ -41,7 +41,7 @@ jobs:
       contents: read
     concurrency:
       #group: deploy-${{ github.job }}-${{ inputs.environment }}
-      group: ${{ github.workflow }}-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v3
@@ -68,7 +68,7 @@ jobs:
         uses: reviewdog/action-tflint@v1
         with:
           reporter: github-check
-          fail_on_error: true
+          fail_level: warning
 
       # - name: Terraform Security Scan (tfsec)
       #   uses: triat/terraform-security-scan@v3
@@ -94,8 +94,15 @@ jobs:
 
       - name: Terraform Plan
         run: |
-          terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan
+          terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan | tee tfplan.txt
           terraform show -json plan.tfplan > tfplan.json
+
+      - name: Print Terraform summary
+        uses: sgametrio/terraform-summary-action@main
+        with:
+          log-file: tfplan.txt
+          # Optional
+          title: Custom header in the Job summary
 
       - name: OPA Check
         if: ${{ inputs.opa_check }}
