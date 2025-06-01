@@ -1,4 +1,4 @@
-name: Reusable Terraform Workflow
+name: Terraform  Apply Workflow
 
 on:
   workflow_call:
@@ -66,7 +66,7 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
 
       - name: Terraform Init
         run: |

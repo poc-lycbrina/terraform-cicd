@@ -1,4 +1,4 @@
-name: Reusable Terraform Workflow
+name: Terraform Plan Workflow
 
 on:
   workflow_call:
@@ -65,10 +65,15 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
-            
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
+
       - name: Terraform Init
-        run: terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
 
       - name: Terraform Validate
         run: terraform validate

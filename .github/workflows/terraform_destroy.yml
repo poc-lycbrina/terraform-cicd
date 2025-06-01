@@ -1,17 +1,27 @@
-name: Terraform destroy
+name: Terraform Destroy Workflow
 
 on:
-  workflow_dispatch:
+  workflow_call:
     inputs:
       environment:
-        description: "Select environment"
         required: true
-        default: "dev"
-        type: choice
-        options:
-          - dev
-          - uat
-          - prod
+        type: string
+      tfvars:
+        required: true
+        type: string
+      backend_config:
+        required: true
+        type: string
+      terraform_version:
+        required: false
+        type: string
+        default: '1.5.7'  # Default Terraform version, can be overridden
+      IAM_OIDC_ROLE:
+        required: true
+        type: string
+      REGION:
+        required: true
+        type: string
 
 jobs:
   destroy-plan:
@@ -45,7 +55,7 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
 
       - name: Terraform Init
         run: |
@@ -79,7 +89,6 @@ jobs:
         uses: sgametrio/terraform-summary-action@main
         with:
           log-file: tfplan.txt
-          # Optional
           title: Terraform Destroy Plan Summary
 
       - name: Upload plan artifact
@@ -121,7 +130,7 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
 
       - name: Terraform Init
         run: |
@@ -130,7 +139,7 @@ jobs:
             echo "Retrying with -upgrade due to possible cache issue..." &&
             terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
           )
-          
+
       - uses: actions/download-artifact@v4
         with:
           name: terraform-destroy-plan-${{ inputs.environment }}

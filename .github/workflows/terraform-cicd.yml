@@ -10,6 +10,17 @@ on:
       - dev
       - main
 
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
 jobs:
   # PR to DEV branch
   pr-dev:
@@ -136,5 +147,17 @@ jobs:
       tfvars: terraform.prod.tfvars
       apply: true
       backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+
+  # Destroy plan for DEV
+  destroy-plan-dev:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'
+    uses: ./.github/workflows/terraform-destroy.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      backend_config: backend.dev.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
