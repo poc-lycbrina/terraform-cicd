@@ -1,149 +1,139 @@
-name: Reusable Terraform Workflow
+name: Terraform CI/CD Entry Point
 
 on:
-  workflow_call:
-    inputs:
-      environment:
-        required: true
-        type: string
-      tfvars:
-        required: true
-        type: string
-      apply:
-        required: false
-        type: boolean
-        default: false
-      opa_check:
-        required: false
-        type: boolean
-        default: false
-      backend_config:
-        required: true
-        type: string
-      terraform_version:
-        required: false
-        type: string
-        default: '1.5.7'  # Default Terraform version, can be overridden
-      IAM_OIDC_ROLE:
-        required: true
-        type: string
-      REGION:
-        required: true
-        type: string
-
+  pull_request:
+    branches:
+      - dev
+      - main
+  push:
+    branches:
+      - dev
+      - main
 
 jobs:
-  terraform:
+  # PR to DEV branch
+  pr-dev:
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      opa_check: true
+      backend_config: backend.dev.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # Push to DEV
+  push-dev-plan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      backend_config: backend.dev.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  push-dev-approval:
+    needs: push-dev-plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    permissions:
-      id-token: write
-      contents: read
+    environment:
+      name: dev
+      url: https://dev.example.com
     steps:
-      - uses: actions/checkout@v3
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${ inputs.terraform_version }
+      - run: echo "Manual approval for dev"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
-          aws-region: ${{ inputs.REGION }}
+  push-dev-apply:
+    needs: push-dev-approval
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      apply: true
+      backend_config: backend.dev.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
-      - name: Terraform Format Check (fmt)
-        run: terraform fmt -check -recursive
+  # PR from DEV to MAIN
+  pr-main-uat:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      opa_check: true
+      backend_config: backend.uat.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
-      - name: Terraform Init
-        run: terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+  pr-main-prod:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      opa_check: true
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
-      - name: Terraform Validate
-        run: terraform validate
+  # Push to MAIN (merge)
+  main-uat-plan:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      backend_config: backend.uat.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
-      - name: Terraform Lint (tflint)
-        uses: reviewdog/action-tflint@v1
-        with:
-          reporter: github-check
-          fail_on_error: true
-
-      # - name: Terraform Security Scan (tfsec)
-      #   uses: triat/terraform-security-scan@v3
-      #   continue-on-error: true
-
-      - id: install-aws-cli
-        uses: unfor19/install-aws-cli-action@v1
-
-      - name: Load secrets from AWS Secrets Manager
-        id: secrets
-        run: |
-          SECRET_JSON=$(aws secretsmanager get-secret-value \
-            --secret-id arn:aws:secretsmanager:ap-southeast-7:140023376669:secret:test-4YV1Ej \
-            --query SecretString \
-            --output text)
-
-          # Parse each key into TF_VAR_ environment variables
-          echo "$SECRET_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value)"' | while IFS='=' read -r key value; do
-            echo "::add-mask::$value"                     
-            echo "TF_VAR_$key=$value" >> "$GITHUB_ENV"    
-          done
-
-
-      - name: Terraform Plan
-        run: |
-          terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan
-          terraform show -json plan.tfplan > tfplan.json
-
-      - name: OPA Check
-        if: ${{ inputs.opa_check }}
-        run: |
-          curl -L -o opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64
-          chmod +x opa
-          mv opa /usr/local/bin/
-          result=$(opa eval --input tfplan.json --data .github/workflows/policies/ "data.terraform.validation")
-          echo $result
-          violations=$(echo "$result" | jq '.result[0].expressions[0].value.deny | length')
-          echo $violations
-
-          if [ "$violations" -gt 0 ]; then
-            echo "❌ Policy violations detected:"
-            echo "$result" | jq -r '.result[0].expressions[0].value.deny'
-            exit 1
-          else
-            echo "✅ No policy violations detected!"
-          fi
-
-          # ./opa eval --input terraform.plan.json --data opa/ "data.terraform.deny"
-
-      - name: Terraform Apply
-        if: ${{ inputs.apply }}
-        run: terraform apply -auto-approve plan.tfplan
-
-
-  unlock-state:
+  main-uat-approval:
+    needs: main-uat-plan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: always()  # <-- This ensures it runs even if terraform job fails
-    needs: terraform
-    permissions:
-      id-token: write
-      contents: read
+    environment: uat
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
-          aws-region: ${{ inputs.REGION }}
+      - run: echo "Manual UAT approval"
 
-      - name: Remove DynamoDB Lock
-        env:
-          AWS_REGION: ${{ inputs.REGION }}
-        run: |
-          # Replace with your actual LockID and table name
-          LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
-          TABLE_NAME="tterraform-state-140023376669"
+  main-uat-apply:
+    needs: main-uat-approval
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      apply: true
+      backend_config: backend.uat.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
-          echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
-          aws dynamodb delete-item \
-            --table-name "$TABLE_NAME" \
-            --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
-            --region "$AWS_REGION" \
-            || echo "No lock found or already removed"
+  main-prod-plan:
+    needs: main-uat-apply
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  main-prod-approval:
+    needs: main-prod-plan
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - run: echo "Manual PROD approval"
+
+  main-prod-apply:
+    needs: main-prod-approval
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      apply: true
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
