@@ -55,7 +55,9 @@ jobs:
           aws-region: ${{ inputs.REGION }}
 
       - name: Terraform Format Check (fmt)
+        id: fmt
         run: terraform fmt -check -recursive
+
 
       - name: Cache Terraform Providers & Modules
         uses: actions/cache@v4
@@ -68,6 +70,7 @@ jobs:
             "terraform-${{ github.repository }}-${{ inputs.environment }}"
 
       - name: Terraform Init
+        id: init
         run: |
           terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
            || (
@@ -76,6 +79,7 @@ jobs:
           )
 
       - name: Terraform Validate
+        id: validate
         run: terraform validate
 
       - name: Terraform Lint (tflint)
@@ -107,9 +111,11 @@ jobs:
 
 
       - name: Terraform Plan
+        id: plan
         run: |
           terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan | tee tfplan.txt
           terraform show -json plan.tfplan > tfplan.json
+        continue-on-error: true  
 
       - name: Print Terraform summary
         uses: sgametrio/terraform-summary-action@main
@@ -118,6 +124,37 @@ jobs:
           # Optional
           title: Terraform Plan Summary
 
+      - uses: actions/github-script@v6
+        if: github.event_name == 'pull_request'
+        env:
+          PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+        with:
+          script: |
+            const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+            #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+            #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+            #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+  
+            <details><summary>Show Plan</summary>
+  
+            \`\`\`\n
+            ${process.env.PLAN}
+            \`\`\`
+  
+            </details>
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+  
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+ 
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+        
       - name: OPA Check
         if: ${{ inputs.opa_check }}
         run: |
