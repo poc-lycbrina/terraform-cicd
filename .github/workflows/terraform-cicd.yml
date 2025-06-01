@@ -12,6 +12,13 @@ on:
 
   workflow_dispatch:
     inputs:
+      workflow:
+        description: "Select workflow to run"
+        required: true
+        type: choice
+        options:
+          - unlock-state
+          - destroy-terraform 
       environment:
         description: "Select environment"
         required: true
@@ -21,13 +28,6 @@ on:
           - dev
           - uat
           - prod
-      workflow:
-        description: "Select workflow to run"
-        required: true
-        type: choice
-        options:
-          - unlock-state
-          - destroy-terraform 
 
 jobs:      
   # PR to DEV branch
@@ -172,7 +172,7 @@ jobs:
 
   # Unlock plan for DEV
   unlock-state-dev:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'unlock-state'
     uses: ./.github/workflows/terraform-state-unlock.yml
     with:
       environment: dev
