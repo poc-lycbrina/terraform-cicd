@@ -37,7 +37,7 @@ jobs:
         env:
           AWS_REGION: ${{ inputs.REGION }}
         run: |
-          LOCK_ID="${{ STATE_S3_BUCKET }}/state/${{ github.repository }}-terraform.tfstate.tflock"
+          LOCK_ID="${{ inputs.STATE_S3_BUCKET }}/state/${{ github.repository }}-terraform.tfstate.tflock"
 
           echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
           aws s3 rm s3://$LOCK_ID \
