@@ -37,8 +37,23 @@ jobs:
           role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
           aws-region: ap-southeast-7
     
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
+
       - name: Terraform Init
-        run: terraform init -backend-config=backend.${{ github.event.inputs.environment }}.hcl -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
 
       - id: install-aws-cli
         uses: unfor19/install-aws-cli-action@v1
@@ -98,9 +113,24 @@ jobs:
           role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
           aws-region: ap-southeast-7
     
-      - name: Terraform Init
-        run: terraform init -backend-config=backend.${{ github.event.inputs.environment }}.hcl -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
 
+      - name: Terraform Init
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
+          
       - uses: actions/download-artifact@v4
         with:
           name: terraform-destroy-plan-${{ inputs.environment }}
