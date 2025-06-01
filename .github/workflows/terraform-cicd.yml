@@ -21,7 +21,15 @@ on:
           - dev
           - uat
           - prod
-jobs:
+      workflow:
+        description: "Select workflow to run"
+        required: true
+        type: choice
+        options:
+          - unlock-state
+          - destroy-terraform 
+
+jobs:      
   # PR to DEV branch
   pr-dev:
     if: github.event_name == 'pull_request' && github.base_ref == 'dev'
@@ -153,7 +161,7 @@ jobs:
 
   # Destroy plan for DEV
   destroy-plan-dev:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
     uses: ./.github/workflows/terraform-destroy.yml
     with:
       environment: dev
@@ -161,3 +169,13 @@ jobs:
       backend_config: backend.dev.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
+
+  # Unlock plan for DEV
+  unlock-state-dev:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    uses: ./.github/workflows/terraform-state-unlock.yml
+    with:
+      environment: dev
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+      STATE_S3_BUCKET: terraform-state-140023376669
