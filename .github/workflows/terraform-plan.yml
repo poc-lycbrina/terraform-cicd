@@ -101,7 +101,7 @@ jobs:
         with:
           log-file: tfplan.txt
           # Optional
-          title: Custom header in the Job summary
+          title: Terraform Plan Summary
 
       - name: OPA Check
         if: ${{ inputs.opa_check }}
