@@ -46,7 +46,7 @@ jobs:
   #     - run: echo "Manual approval for dev"
 
   push-dev-apply:
-    needs: push-dev-approval
+    needs: push-dev-plan
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     uses: ./.github/workflows/terraform-apply.yml
     with:
@@ -100,7 +100,7 @@ jobs:
   #     - run: echo "Manual UAT approval"
 
   main-uat-apply:
-    needs: main-uat-approval
+    needs: main-uat-plan
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: uat
@@ -129,7 +129,7 @@ jobs:
   #     - run: echo "Manual PROD approval"
 
   main-prod-apply:
-    needs: main-prod-approval
+    needs: main-prod-plan
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: prod
