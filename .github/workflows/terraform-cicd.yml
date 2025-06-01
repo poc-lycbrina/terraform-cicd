@@ -35,18 +35,18 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
-  push-dev-approval:
-    needs: push-dev-plan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-    runs-on: ubuntu-latest
-    environment:
-      name: dev
-      url: https://dev.example.com
-    steps:
-      - run: echo "Manual approval for dev"
+  # push-dev-approval:
+  #   needs: push-dev-plan
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+  #   runs-on: ubuntu-latest
+  #   environment:
+  #     name: dev
+  #     url: https://dev.example.com
+  #   steps:
+  #     - run: echo "Manual approval for dev"
 
   push-dev-apply:
-    needs: push-dev-approval
+    needs: push-dev-plan
     if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
     uses: ./.github/workflows/terraform-apply.yml
     with:
@@ -91,16 +91,16 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
-  main-uat-approval:
-    needs: main-uat-plan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: uat
-    steps:
-      - run: echo "Manual UAT approval"
+  # main-uat-approval:
+  #   needs: main-uat-plan
+  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  #   runs-on: ubuntu-latest
+  #   environment: uat
+  #   steps:
+  #     - run: echo "Manual UAT approval"
 
   main-uat-apply:
-    needs: main-uat-approval
+    needs: main-uat-plan
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: uat
@@ -121,15 +121,15 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
-  main-prod-approval:
-    needs: main-prod-plan
-    runs-on: ubuntu-latest
-    environment: prod
-    steps:
-      - run: echo "Manual PROD approval"
+  # main-prod-approval:
+  #   needs: main-prod-plan
+  #   runs-on: ubuntu-latest
+  #   environment: prod
+  #   steps:
+  #     - run: echo "Manual PROD approval"
 
   main-prod-apply:
-    needs: main-prod-approval
+    needs: main-prod-plan
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: prod
