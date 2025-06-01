@@ -14,11 +14,15 @@ on:
           - prod
 
 jobs:
-  destroy:
+  destroy-plan:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
+    concurrency:
+      #group: deploy-${{ github.job }}-${{ inputs.environment }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
+      cancel-in-progress: true
     steps:
       - name: Print selected environment
         run: |
@@ -33,8 +37,23 @@ jobs:
           role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
           aws-region: ap-southeast-7
     
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
+
       - name: Terraform Init
-        run: terraform init -backend-config=backend.${{ github.event.inputs.environment }}.hcl -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
 
       - id: install-aws-cli
         uses: unfor19/install-aws-cli-action@v1
@@ -54,16 +73,76 @@ jobs:
           done
 
       - name: Terraform Plan
-        run: terraform plan -var-file=terraform.${{ github.event.inputs.environment }}.tfvars -destroy
+        run: terraform plan -var-file=terraform.${{ github.event.inputs.environment }}.tfvars -destroy -out=tfdestroy.plan | tee tfplan.txt
+
+      - name: Print Terraform summary
+        uses: sgametrio/terraform-summary-action@main
+        with:
+          log-file: tfplan.txt
+          # Optional
+          title: Terraform Destroy Plan Summary
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+            name: terraform-destroy-plan-${{ inputs.environment }}
+            path: tfdestroy.plan
+
+  destroy-apply:
+    runs-on: ubuntu-latest
+    needs: destroy-plan
+    permissions:
+      id-token: write
+      contents: read
+    environment: ${{ inputs.environment }}
+    concurrency:
+      #group: deploy-${{ github.job }}-${{ inputs.environment }}
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
+      cancel-in-progress: false
+    steps:
+      - name: Print selected environment
+        run: |
+          echo "Running for environment: ${{ github.event.inputs.environment }}"
+
+      - uses: actions/checkout@v3
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+          aws-region: ap-southeast-7
+    
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
+
+      - name: Terraform Init
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
+          
+      - uses: actions/download-artifact@v4
+        with:
+          name: terraform-destroy-plan-${{ inputs.environment }}
 
       - name: Terraform Destroy
-        run: terraform apply -destroy -auto-approve
+        run: terraform apply -auto-approve tfdestroy.plan
         
 
   unlock-state:
     runs-on: ubuntu-latest
     if: always()  # <-- This ensures it runs even if terraform job fails
-    needs: destroy
+    needs: [destroy-plan,destroy-apply]
     permissions:
       id-token: write
       contents: read
@@ -74,17 +153,13 @@ jobs:
           role-to-assume: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
           aws-region: ap-southeast-7
 
-      - name: Remove DynamoDB Lock
+      - name: Remove Terraform Lock
         env:
           AWS_REGION: ap-southeast-7
         run: |
-          # Replace with your actual LockID and table name
-          LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
-          TABLE_NAME="tterraform-state-140023376669"
+          LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate.tflock"
 
           echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
-          aws dynamodb delete-item \
-            --table-name "$TABLE_NAME" \
-            --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
+          aws s3 rm s3://$LOCK_ID \
             --region "$AWS_REGION" \
             || echo "No lock found or already removed"

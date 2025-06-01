@@ -58,9 +58,23 @@ jobs:
       # - name: Terraform Format Check (fmt)
       #   run: terraform fmt -check -recursive
 
-      - name: Terraform Init
-        run: terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
 
+      - name: Terraform Init
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+          )
       # - name: Terraform Validate
       #   run: terraform validate
 

@@ -57,6 +57,16 @@ jobs:
       - name: Terraform Format Check (fmt)
         run: terraform fmt -check -recursive
 
+      - name: Cache Terraform Providers & Modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            .terraform/providers
+            .terraform/modules
+          key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-
+            
       - name: Terraform Init
         run: terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
 
@@ -101,7 +111,7 @@ jobs:
         with:
           log-file: tfplan.txt
           # Optional
-          title: Custom header in the Job summary
+          title: Terraform Plan Summary
 
       - name: OPA Check
         if: ${{ inputs.opa_check }}
