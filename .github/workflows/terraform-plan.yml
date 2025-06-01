@@ -130,19 +130,10 @@ jobs:
           PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
         with:
           script: |
-            const planOutput = fs.readFileSync('plan.txt', 'utf8');
             const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
             #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
             #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
             #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
-  
-            <details><summary>Show Plan</summary>
-  
-            \`\`\`\n
-            ${planOutput}
-            \`\`\`
-  
-            </details>
             *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
   
             github.rest.issues.createComment({
