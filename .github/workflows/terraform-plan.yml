@@ -142,13 +142,13 @@ jobs:
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
-        if: ${{ inputs.apply }} == false
+        if: ${{ inputs.apply }} != true
         with:
           role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
           aws-region: ${{ inputs.REGION }}
 
       - name: Remove DynamoDB Lock
-        if: ${{ inputs.apply }} == false
+        if: ${{ inputs.apply }} != true
         env:
           AWS_REGION: ${{ inputs.REGION }}
         run: |
