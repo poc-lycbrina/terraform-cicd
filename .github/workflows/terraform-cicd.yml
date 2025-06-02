@@ -84,9 +84,8 @@ jobs:
   # PR to DEV branch
   pr-dev:
     needs: detect-changes
-    if: |
-      github.event_name == 'pull_request' && github.base_ref == 'dev' 
-      && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
+
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: dev
