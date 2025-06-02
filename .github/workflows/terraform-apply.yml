@@ -1,4 +1,4 @@
-name: Reusable Terraform Workflow
+name: Terraform  Apply Workflow
 
 on:
   workflow_call:
@@ -66,7 +66,7 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
 
       - name: Terraform Init
         run: |
@@ -141,31 +141,31 @@ jobs:
         run: terraform apply -auto-approve plan.tfplan
 
 
-  unlock-state:
-    runs-on: ubuntu-latest
-    if: always()  # <-- This ensures it runs even if terraform job fails
-    needs: terraform
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
-          aws-region: ${{ inputs.REGION }}
+  # unlock-state:
+  #   runs-on: ubuntu-latest
+  #   if: always()  # <-- This ensures it runs even if terraform job fails
+  #   needs: terraform
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       with:
+  #         role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
+  #         aws-region: ${{ inputs.REGION }}
 
-      - name: Remove DynamoDB Lock
-        env:
-          AWS_REGION: ${{ inputs.REGION }}
-        run: |
-          # Replace with your actual LockID and table name
-          LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
-          TABLE_NAME="tterraform-state-140023376669"
+  #     - name: Remove DynamoDB Lock
+  #       env:
+  #         AWS_REGION: ${{ inputs.REGION }}
+  #       run: |
+  #         # Replace with your actual LockID and table name
+  #         LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
+  #         TABLE_NAME="tterraform-state-140023376669"
 
-          echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
-          aws dynamodb delete-item \
-            --table-name "$TABLE_NAME" \
-            --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
-            --region "$AWS_REGION" \
-            || echo "No lock found or already removed"
+  #         echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
+  #         aws dynamodb delete-item \
+  #           --table-name "$TABLE_NAME" \
+  #           --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
+  #           --region "$AWS_REGION" \
+  #           || echo "No lock found or already removed"

@@ -10,10 +10,66 @@ on:
       - dev
       - main
 
-jobs:
+  workflow_dispatch:
+    inputs:
+      workflow:
+        description: "Select workflow to run"
+        required: true
+        type: choice
+        options:
+          - unlock-state
+          - destroy-terraform 
+      environment:
+        description: "Select environment"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - uat
+          - prod
+
+jobs:      
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed-dev: ${{ steps.set.outputs.changed-dev }}
+      changed-uat: ${{ steps.set.outputs.changed-uat }}
+      changed-prod: ${{ steps.set.outputs.changed-prod }}
+      trigger-all: ${{ steps.set.outputs.trigger-all }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        id: set
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=50 || true
+          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
+          
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          echo "$CHANGED" | grep 'dev' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep 'uat' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep 'prod' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
+
+          if echo "$CHANGED" | grep -Ev 'dev|uat|prod' | grep -q '.'; then
+            echo "trigger-all=true" >> $GITHUB_OUTPUT
+          else
+            echo "trigger-all=false" >> $GITHUB_OUTPUT
+          fi
+          
   # PR to DEV branch
   pr-dev:
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev'
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' && github.base_ref == 'dev' 
+      && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: dev
@@ -25,7 +81,10 @@ jobs:
 
   # Push to DEV
   push-dev-plan:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    needs: detect-changes
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/dev' 
+      && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: dev
@@ -34,16 +93,6 @@ jobs:
       apply: true
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
-
-  # push-dev-approval:
-  #   needs: push-dev-plan
-  #   if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
-  #   runs-on: ubuntu-latest
-  #   environment:
-  #     name: dev
-  #     url: https://dev.example.com
-  #   steps:
-  #     - run: echo "Manual approval for dev"
 
   push-dev-apply:
     needs: push-dev-plan
@@ -59,7 +108,10 @@ jobs:
 
   # PR from DEV to MAIN
   pr-main-uat:
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'dev'
+      && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: uat
@@ -70,7 +122,10 @@ jobs:
       REGION: ap-southeast-7
 
   pr-main-prod:
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    needs: detect-changes
+    if: |
+      github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'dev'
+      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
@@ -82,7 +137,10 @@ jobs:
 
   # Push to MAIN (merge)
   main-uat-plan:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: detect-changes
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: uat
@@ -90,14 +148,6 @@ jobs:
       backend_config: backend.uat.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
-
-  # main-uat-approval:
-  #   needs: main-uat-plan
-  #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   environment: uat
-  #   steps:
-  #     - run: echo "Manual UAT approval"
 
   main-uat-apply:
     needs: main-uat-plan
@@ -112,7 +162,9 @@ jobs:
 
   main-prod-plan:
     needs: main-uat-apply
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true') 
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
@@ -120,13 +172,6 @@ jobs:
       backend_config: backend.prod.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
-
-  # main-prod-approval:
-  #   needs: main-prod-plan
-  #   runs-on: ubuntu-latest
-  #   environment: prod
-  #   steps:
-  #     - run: echo "Manual PROD approval"
 
   main-prod-apply:
     needs: main-prod-plan
@@ -138,3 +183,25 @@ jobs:
       backend_config: backend.prod.hcl
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
+
+
+  # Destroy plan for DEV
+  destroy-plan-dev:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    uses: ./.github/workflows/terraform-destroy.yml
+    with:
+      environment: dev
+      tfvars: terraform.dev.tfvars
+      backend_config: backend.dev.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # Unlock plan for DEV
+  unlock-state-dev:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'unlock-state'
+    uses: ./.github/workflows/terraform-state-unlock.yml
+    with:
+      environment: dev
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+      STATE_S3_BUCKET: terraform-state-140023376669

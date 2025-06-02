@@ -1,4 +1,4 @@
-name: Reusable Terraform Workflow
+name: Terraform Plan Workflow
 
 on:
   workflow_call:
@@ -40,8 +40,8 @@ jobs:
       contents: read
     concurrency:
       #group: deploy-${{ github.job }}-${{ inputs.environment }}
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.environment }}
-      cancel-in-progress: true
+      group: ${{ github.workflow }}-${{ inputs.environment }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v3
       - uses: hashicorp/setup-terraform@v3
@@ -55,7 +55,9 @@ jobs:
           aws-region: ${{ inputs.REGION }}
 
       - name: Terraform Format Check (fmt)
+        id: fmt
         run: terraform fmt -check -recursive
+
 
       - name: Cache Terraform Providers & Modules
         uses: actions/cache@v4
@@ -65,12 +67,19 @@ jobs:
             .terraform/modules
           key: terraform-${{ hashFiles('**/.terraform.lock.hcl') }}
           restore-keys: |
-            terraform-
-            
+            "terraform-${{ github.repository }}-${{ inputs.environment }}"
+
       - name: Terraform Init
-        run: terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+        id: init
+        run: |
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate" \
+           || (
+            echo "Retrying with -upgrade due to possible cache issue..." &&
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate"
+          )
 
       - name: Terraform Validate
+        id: validate
         run: terraform validate
 
       - name: Terraform Lint (tflint)
@@ -102,9 +111,11 @@ jobs:
 
 
       - name: Terraform Plan
+        id: plan
         run: |
           terraform plan -var-file="${{ inputs.tfvars }}" -out=plan.tfplan | tee tfplan.txt
           terraform show -json plan.tfplan > tfplan.json
+        continue-on-error: true  
 
       - name: Print Terraform summary
         uses: sgametrio/terraform-summary-action@main
@@ -112,7 +123,11 @@ jobs:
           log-file: tfplan.txt
           # Optional
           title: Terraform Plan Summary
-
+  
+      - name: Terraform Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+        
       - name: OPA Check
         if: ${{ inputs.opa_check }}
         run: |
@@ -142,33 +157,33 @@ jobs:
             path: plan.tfplan
 
 
-  unlock-state:
-    runs-on: ubuntu-latest
-    if: always()  # <-- This ensures it runs even if terraform job fails
-    needs: terraform-plan
-    permissions:
-      id-token: write
-      contents: read
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        if: ${{ inputs.apply }} != true
-        with:
-          role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
-          aws-region: ${{ inputs.REGION }}
+  # unlock-state:
+  #   runs-on: ubuntu-latest
+  #   if: always()  # <-- This ensures it runs even if terraform job fails
+  #   needs: terraform-plan
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   steps:
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v1
+  #       if: ${{ inputs.apply }} != true
+  #       with:
+  #         role-to-assume: ${{ inputs.IAM_OIDC_ROLE }}
+  #         aws-region: ${{ inputs.REGION }}
 
-      - name: Remove DynamoDB Lock
-        if: ${{ inputs.apply }} != true
-        env:
-          AWS_REGION: ${{ inputs.REGION }}
-        run: |
-          # Replace with your actual LockID and table name
-          LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
-          TABLE_NAME="tterraform-state-140023376669"
+  #     - name: Remove DynamoDB Lock
+  #       if: ${{ inputs.apply }} != true
+  #       env:
+  #         AWS_REGION: ${{ inputs.REGION }}
+  #       run: |
+  #         # Replace with your actual LockID and table name
+  #         LOCK_ID="terraform-state-140023376669/state/${{ github.repository }}-terraform.tfstate"
+  #         TABLE_NAME="tterraform-state-140023376669"
 
-          echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
-          aws dynamodb delete-item \
-            --table-name "$TABLE_NAME" \
-            --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
-            --region "$AWS_REGION" \
-            || echo "No lock found or already removed"
+  #         echo "Checking for lock ID: $LOCK_ID in $TABLE_NAME"
+  #         aws dynamodb delete-item \
+  #           --table-name "$TABLE_NAME" \
+  #           --key "{\"LockID\": {\"S\": \"$LOCK_ID\"}}" \
+  #           --region "$AWS_REGION" \
+  #           || echo "No lock found or already removed"
