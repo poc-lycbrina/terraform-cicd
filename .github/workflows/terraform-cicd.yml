@@ -238,6 +238,10 @@ jobs:
 
   prod-apply:
     needs: [main-prod-plan, cr-prod-plan]
+    if: |
+      success() && (
+        needs.main-prod-plan.result == 'success' || needs.cr-prod-plan.result == 'success'
+      )
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: prod
