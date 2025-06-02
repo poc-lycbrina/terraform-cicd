@@ -34,10 +34,10 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      changed-dev: ${{ steps.set.outputs.changed-dev }}
-      changed-uat: ${{ steps.set.outputs.changed-uat }}
-      changed-prod: ${{ steps.set.outputs.changed-prod }}
-      trigger-all: ${{ steps.set.outputs.trigger-all }}
+      changed-dev: ${{ steps.changes.outputs.changed-dev }}
+      changed-uat: ${{ steps.changes.outputs.changed-uat }}
+      changed-prod: ${{ steps.changes.outputs.changed-prod }}
+      trigger-all: ${{ steps.changes.outputs.trigger-all }}
 
     steps:
       - name: Checkout
