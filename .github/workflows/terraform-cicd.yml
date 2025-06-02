@@ -34,10 +34,11 @@ jobs:
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
-      changed-dev: ${{ steps.changes.outputs.changed-dev }}
-      changed-uat: ${{ steps.changes.outputs.changed-uat }}
-      changed-prod: ${{ steps.changes.outputs.changed-prod }}
+      trigger-dev: ${{ steps.changes.outputs.trigger-dev }}
+      trigger-uat: ${{ steps.changes.outputs.trigger-uat }}
+      trigger-prod: ${{ steps.changes.outputs.trigger-prod }}
       trigger-all: ${{ steps.changes.outputs.trigger-all }}
+      push-prod: ${{ steps.changes.outputs.push-prod }}
 
     steps:
       - name: Checkout
@@ -63,9 +64,9 @@ jobs:
           echo "$CHANGED"
 
           # Set outputs based on paths
-          echo "$CHANGED" | grep 'dev' >/dev/null && echo "changed-dev=true" >> "$GITHUB_OUTPUT" || echo "changed-dev=false" >> "$GITHUB_OUTPUT"
-          echo "$CHANGED" | grep 'uat' >/dev/null && echo "changed-uat=true" >> "$GITHUB_OUTPUT" || echo "changed-uat=false" >> "$GITHUB_OUTPUT"
-          echo "$CHANGED" | grep 'prod' >/dev/null && echo "changed-prod=true" >> "$GITHUB_OUTPUT" || echo "changed-prod=false" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" | grep 'dev' >/dev/null && echo "trigger-dev=true" >> "$GITHUB_OUTPUT" || echo "trigger-dev=false" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" | grep 'uat' >/dev/null && echo "trigger-uat=true" >> "$GITHUB_OUTPUT" || echo "trigger-uat=false" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" | grep 'prod' >/dev/null && echo "trigger-prod=true" >> "$GITHUB_OUTPUT" || echo "trigger-prod=false" >> "$GITHUB_OUTPUT"
 
           # Check if shared files changed
           if echo "$CHANGED" | grep -Ev 'dev|uat|prod' | grep -q '.'; then
@@ -74,30 +75,46 @@ jobs:
             echo "trigger-all=false" >> "$GITHUB_OUTPUT"
           fi
 
+          # Check if pull request source branch starts with PROD-CR
+          echo "Source branch: ${{ github.head_ref }}"
+          if [[ "${{ github.head_ref }}" == PROD-CR* ]]; then
+            echo "✅ Source branch starts with PROD-CR"
+            echo "trigger-prod=true" >> "$GITHUB_OUTPUT"
+            echo "trigger-all=false" >> "$GITHUB_OUTPUT"
+            echo "trigger-dev=false" >> "$GITHUB_OUTPUT"
+            echo "trigger-uat=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Source branch does not start with PROD-CR"
+          fi
+
+          # Check if commit is a merge commit with title starting with "PROD-CR"
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+          if echo "$COMMIT_MSG" | grep -q "Merge pull request"; then
+            if echo "$COMMIT_MSG" | grep -q "PROD-CR"; then
+              echo "✅ PR title starts with PROD-CR"
+              echo "push-prod=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "❌ PR title does not start with PROD-CR"
+              echo "push-prod=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "❌ Not a PR merge commit"
+            echo "push-prod=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Print outputs
         run: |
-          echo "Changed DEV: ${{ steps.changes.outputs.changed-dev }}"
-          echo "Changed UAT: ${{ steps.changes.outputs.changed-uat }}"
-          echo "Changed PROD: ${{ steps.changes.outputs.changed-prod }}"
+          echo "Changed DEV: ${{ steps.changes.outputs.trigger-dev }}"
+          echo "Changed UAT: ${{ steps.changes.outputs.trigger-uat }}"
+          echo "Changed PROD: ${{ steps.changes.outputs.trigger-prod }}"
           echo "Trigger All: ${{ steps.changes.outputs.trigger-all }}"
-
-  test:
-    runs-on: ubuntu-latest
-    if: always()
-    needs: detect-changes
-    steps:
-      - name: Print evaluated condition
-        run: |
-          echo ${{github.event_name}}
-          echo ${{github.base_ref}}
-          echo ${{needs.detect-changes.outputs.changed-dev}}
-          echo ${{needs.detect-changes.outputs.trigger-all}}
-          echo "Evaluated: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true') }}"
+          echo "Push PROD: ${{ steps.changes.outputs.push-prod }}"
 
   # PR to DEV branch
   pr-dev:
     needs: detect-changes
-    if: github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
+    if: github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.trigger-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
 
     uses: ./.github/workflows/terraform-plan.yml
     with:
@@ -113,7 +130,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/dev' 
-      && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
+      && (needs.detect-changes.outputs.trigger-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: dev
@@ -140,7 +157,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'main'
-      && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
+      && (needs.detect-changes.outputs.trigger-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: uat
@@ -154,7 +171,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'main'
-      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
+      && (needs.detect-changes.outputs.trigger-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
@@ -169,7 +186,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
+      && (needs.detect-changes.outputs.trigger-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: uat
@@ -194,7 +211,7 @@ jobs:
     needs: main-uat-apply
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true') 
+      && (needs.detect-changes.outputs.trigger-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true') 
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
@@ -204,8 +221,23 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
-  main-prod-apply:
-    needs: main-prod-plan
+  # CR for PROD
+  cr-prod-plan:
+    needs: detect-changes
+    if: |
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && (needs.detect-changes.outputs.push-prod == 'true') 
+    uses: ./.github/workflows/terraform-plan.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      apply: true
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  prod-apply:
+    needs: [main-prod-plan, cr-prod-plan]
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: prod
