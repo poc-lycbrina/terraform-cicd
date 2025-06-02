@@ -236,12 +236,8 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
-  prod-apply:
-    needs: [main-prod-plan, cr-prod-plan]
-    if: |
-      success() && (
-        needs.main-prod-plan.result == 'success' || needs.cr-prod-plan.result == 'success'
-      )
+  main-prod-apply:
+    needs: main-prod-plan
     uses: ./.github/workflows/terraform-apply.yml
     with:
       environment: prod
@@ -251,6 +247,16 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
+  cr-prod-apply:
+    needs: cr-prod-plan
+    uses: ./.github/workflows/terraform-apply.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      apply: true
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
 
   # Destroy plan for DEV
   destroy-plan-dev:
