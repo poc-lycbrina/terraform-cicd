@@ -81,6 +81,19 @@ jobs:
           echo "Changed PROD: ${{ steps.changes.outputs.changed-prod }}"
           echo "Trigger All: ${{ steps.changes.outputs.trigger-all }}"
 
+  test:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: detect-changes
+    steps:
+      - name: Print evaluated condition
+        run: |
+          echo ${{github.event_name}}
+          echo ${{github.base_ref}}
+          echo ${{needs.detect-changes.outputs.changed-dev}}
+          echo ${{needs.detect-changes.outputs.trigger-all}}
+          echo "Evaluated: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true') }}"
+
   # PR to DEV branch
   pr-dev:
     needs: detect-changes
