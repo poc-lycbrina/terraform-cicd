@@ -46,15 +46,15 @@ jobs:
       - name: Detect file changes
         id: set
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1 || true
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=50 || true
           CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
           
           echo "Changed files:"
           echo "$CHANGED"
 
-          echo "$CHANGED" | grep '^dev/' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep '^uat/' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep '^prod/' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep '^dev' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep '^uat' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep '^prod' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
 
           ONLY_SHARED=$(echo "$CHANGED" | grep -Ev '^(dev/|uat/|prod/)' | grep -E '\.tf$|\.ya?ml$' || true)
           NO_ENV=$(echo "$CHANGED" | grep -Ev '^(dev/|uat/|prod/)' || true)
