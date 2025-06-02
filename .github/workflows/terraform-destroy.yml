@@ -90,7 +90,7 @@ jobs:
         uses: sgametrio/terraform-summary-action@main
         with:
           log-file: tfplan.txt
-          title: Terraform Destroy Plan Summary
+          title: "Terraform Destroy Plan Summary ${{ inputs.environment }}"
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
