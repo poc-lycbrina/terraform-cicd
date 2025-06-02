@@ -229,7 +229,7 @@ jobs:
 
   # Destroy plan for UAT
   destroy-plan-uat:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat'  && github.event.inputs.workflow == 'destroy-terraform'
     uses: ./.github/workflows/terraform-destroy.yml
     with:
       environment: uat
@@ -240,7 +240,7 @@ jobs:
 
   # Destroy plan for PROD
   destroy-plan-prod:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'  && github.event.inputs.workflow == 'destroy-terraform'
     uses: ./.github/workflows/terraform-destroy.yml
     with:
       environment: prod
