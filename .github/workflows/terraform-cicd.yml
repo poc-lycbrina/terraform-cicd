@@ -38,6 +38,7 @@ jobs:
       trigger-uat: ${{ steps.changes.outputs.trigger-uat }}
       trigger-prod: ${{ steps.changes.outputs.trigger-prod }}
       trigger-all: ${{ steps.changes.outputs.trigger-all }}
+      push-prod: ${{ steps.changes.outputs.push-prod }}
 
     steps:
       - name: Checkout
@@ -92,14 +93,14 @@ jobs:
           if echo "$COMMIT_MSG" | grep -q "Merge pull request"; then
             if echo "$COMMIT_MSG" | grep -q "PROD-CR"; then
               echo "✅ PR title starts with PROD-CR"
-              echo "trigger-prod=true" >> "$GITHUB_OUTPUT"
+              echo "push-prod=true" >> "$GITHUB_OUTPUT"
             else
               echo "❌ PR title does not start with PROD-CR"
-              echo "trigger-prod=false" >> "$GITHUB_OUTPUT"
+              echo "push-prod=false" >> "$GITHUB_OUTPUT"
             fi
           else
             echo "❌ Not a PR merge commit"
-            echo "trigger-prod=false" >> "$GITHUB_OUTPUT"
+            echo "push-prod=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Print outputs
@@ -108,6 +109,7 @@ jobs:
           echo "Changed UAT: ${{ steps.changes.outputs.trigger-uat }}"
           echo "Changed PROD: ${{ steps.changes.outputs.trigger-prod }}"
           echo "Trigger All: ${{ steps.changes.outputs.trigger-all }}"
+          echo "Push PROD: ${{ steps.changes.outputs.push-prod }}"
 
   # PR to DEV branch
   pr-dev:
@@ -224,7 +226,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && (needs.detect-changes.outputs.trigger-prod == 'true') 
+      && (needs.detect-changes.outputs.push-prod == 'true') 
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
