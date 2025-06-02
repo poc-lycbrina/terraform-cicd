@@ -82,10 +82,8 @@ jobs:
             echo "trigger-all=false" >> "$GITHUB_OUTPUT"
             echo "trigger-dev=false" >> "$GITHUB_OUTPUT"
             echo "trigger-uat=false" >> "$GITHUB_OUTPUT"
-
           else
             echo "❌ Source branch does not start with PROD-CR"
-            exit 1
           fi
 
           # Check if commit is a merge commit with title starting with "PROD-CR"
@@ -108,21 +106,8 @@ jobs:
         run: |
           echo "Changed DEV: ${{ steps.changes.outputs.trigger-dev }}"
           echo "Changed UAT: ${{ steps.changes.outputs.trigger-uat }}"
-          echo "Changed PROD: ${{ steps.changes.outputs.changed-prod }}"
+          echo "Changed PROD: ${{ steps.changes.outputs.trigger-prod }}"
           echo "Trigger All: ${{ steps.changes.outputs.trigger-all }}"
-
-  test:
-    runs-on: ubuntu-latest
-    if: always()
-    needs: detect-changes
-    steps:
-      - name: Print evaluated condition
-        run: |
-          echo ${{github.event_name}}
-          echo ${{github.base_ref}}
-          echo ${{needs.detect-changes.outputs.trigger-dev}}
-          echo ${{needs.detect-changes.outputs.trigger-all}}
-          echo "Evaluated: ${{ github.event_name == 'pull_request' && github.base_ref == 'dev' && (needs.detect-changes.outputs.trigger-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true') }}"
 
   # PR to DEV branch
   pr-dev:
