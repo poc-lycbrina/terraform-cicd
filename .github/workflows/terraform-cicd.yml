@@ -227,12 +227,54 @@ jobs:
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
 
+  # Destroy plan for UAT
+  destroy-plan-uat:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    uses: ./.github/workflows/terraform-destroy.yml
+    with:
+      environment: uat
+      tfvars: terraform.uat.tfvars
+      backend_config: backend.uat.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
+  # Destroy plan for PROD
+  destroy-plan-prod:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'destroy-terraform'
+    uses: ./.github/workflows/terraform-destroy.yml
+    with:
+      environment: prod
+      tfvars: terraform.prod.tfvars
+      backend_config: backend.prod.hcl
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+
   # Unlock plan for DEV
   unlock-state-dev:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'dev'  && github.event.inputs.workflow == 'unlock-state'
     uses: ./.github/workflows/terraform-state-unlock.yml
     with:
       environment: dev
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+      STATE_S3_BUCKET: terraform-state-140023376669
+
+  # Unlock plan for UAT
+  unlock-state-uat:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'uat'  && github.event.inputs.workflow == 'unlock-state'
+    uses: ./.github/workflows/terraform-state-unlock.yml
+    with:
+      environment: uat
+      IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
+      REGION: ap-southeast-7
+      STATE_S3_BUCKET: terraform-state-140023376669
+
+  # Unlock plan for PROD
+  unlock-state-prod:
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod'  && github.event.inputs.workflow == 'unlock-state'
+    uses: ./.github/workflows/terraform-state-unlock.yml
+    with:
+      environment: prod
       IAM_OIDC_ROLE: arn:aws:iam::140023376669:role/cmrs-DEV-TH-custom-GithubOIDCRole
       REGION: ap-southeast-7
       STATE_S3_BUCKET: terraform-state-140023376669
