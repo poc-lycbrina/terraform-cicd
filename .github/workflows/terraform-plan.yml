@@ -72,10 +72,10 @@ jobs:
       - name: Terraform Init
         id: init
         run: |
-          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate" \
            || (
             echo "Retrying with -upgrade due to possible cache issue..." &&
-            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate"
           )
 
       - name: Terraform Validate
