@@ -69,6 +69,7 @@ jobs:
 
   # PR to DEV branch
   pr-dev:
+    needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'dev' 
       && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
@@ -83,6 +84,7 @@ jobs:
 
   # Push to DEV
   push-dev-plan:
+    needs: detect-changes
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/dev' 
       && (needs.detect-changes.outputs.changed-dev == 'true' || needs.detect-changes.outputs.trigger-all == 'true')
@@ -109,6 +111,7 @@ jobs:
 
   # PR from DEV to MAIN
   pr-main-uat:
+    needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'dev'
       && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
@@ -122,6 +125,7 @@ jobs:
       REGION: ap-southeast-7
 
   pr-main-prod:
+    needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'main' && github.head_ref == 'dev'
       && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
@@ -136,6 +140,7 @@ jobs:
 
   # Push to MAIN (merge)
   main-uat-plan:
+    needs: detect-changes
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main'
       && (needs.detect-changes.outputs.changed-uat == 'true' || needs.detect-changes.outputs.trigger-all == 'true')    
