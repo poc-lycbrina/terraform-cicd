@@ -122,7 +122,7 @@ jobs:
         with:
           log-file: tfplan.txt
           # Optional
-          title: Terraform Plan Summary
+          title: "Terraform Plan Summary ${{ inputs.environment }}"
   
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
