@@ -72,10 +72,10 @@ jobs:
       - name: Terraform Init
         id: init
         run: |
-          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate" \
+          terraform init -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate" \
            || (
             echo "Retrying with -upgrade due to possible cache issue..." &&
-            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-terraform.tfstate"
+            terraform init -upgrade -backend-config="${{ inputs.backend_config }}" -backend-config="key=state/${{ github.repository }}-${{ inputs.environment }}-terraform.tfstate"
           )
 
       - name: Terraform Validate
@@ -123,42 +123,7 @@ jobs:
           log-file: tfplan.txt
           # Optional
           title: Terraform Plan Summary
-
-      - name: Save Terraform Plan to file
-        run: echo "${{ steps.plan.outputs.stdout }}" > plan.txt
-
-      - uses: actions/github-script@v6
-        if: github.event_name == 'pull_request'
-        with:
-          script: |
-            const fs = require('fs');
-
-            const planOutput = fs.readFileSync('plan.txt', 'utf8');
-            const output = `#### Terraform Format and Style 🖌 \`${{ steps.fmt.outcome }}\`
-            #### Terraform Initialization ⚙️ \`${{ steps.init.outcome }}\`
-            #### Terraform Validation 🤖 \`${{ steps.validate.outcome }}\`
-            #### Terraform Plan 📖 \`${{ steps.plan.outcome }}\`
-
-            <details><summary>Show Plan</summary>
-
-            \`\`\`
-            ${planOutput}
-            \`\`\`
-
-            </details>
-            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
-
-            // Post comment on PR
-            await
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            });
-
- 
+  
       - name: Terraform Plan Status
         if: steps.plan.outcome == 'failure'
         run: exit 1
