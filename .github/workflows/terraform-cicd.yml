@@ -171,7 +171,7 @@ jobs:
     needs: detect-changes
     if: |
       github.event_name == 'pull_request' && github.base_ref == 'main'
-      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
+      && (needs.detect-changes.outputs.trigger-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true')  
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
@@ -211,7 +211,7 @@ jobs:
     needs: main-uat-apply
     if: |
       github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && (needs.detect-changes.outputs.changed-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true') 
+      && (needs.detect-changes.outputs.trigger-prod == 'true' || needs.detect-changes.outputs.trigger-all == 'true') 
     uses: ./.github/workflows/terraform-plan.yml
     with:
       environment: prod
