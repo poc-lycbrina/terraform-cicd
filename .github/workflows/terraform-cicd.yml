@@ -54,14 +54,15 @@ jobs:
           echo "Changed files:"
           echo "$CHANGED"
 
-          echo "$CHANGED" | grep '^dev' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep '^uat' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep '^prod' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep 'dev' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep 'uat' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
+          echo "$CHANGED" | grep 'prod' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
 
-          ONLY_SHARED=$(echo "$CHANGED" | grep -Ev '^(dev/|uat/|prod/)' | grep -E '\.tf$|\.ya?ml$' || true)
-          NO_ENV=$(echo "$CHANGED" | grep -Ev '^(dev/|uat/|prod/)' || true)
+          ONLY_SHARED=$(echo "$CHANGED" | grep -Ev 'dev|uat|prod' || true)
+          echo "$CHANGED" | grep -Ev 'dev|uat|prod' || true
+          NO_ENV=$(echo "$CHANGED" | grep -Ev 'dev|uat|prod' || true)
 
-          if [ -n "$ONLY_SHARED" ] && [ "$(echo "$CHANGED" | grep -E '^(dev/|uat/|prod/)' | wc -l)" -eq 0 ]; then
+          if [ -n "$ONLY_SHARED" ] && [ "$(echo "$CHANGED" | grep -E 'dev|uat|prod' | wc -l)" -eq 0 ]; then
             echo "trigger-all=true" >> $GITHUB_OUTPUT
           else
             echo "trigger-all=false" >> $GITHUB_OUTPUT

@@ -9,7 +9,7 @@ generic_info = {
   custom_tags = {
     Workspace = "cmrs-pass-dev",
   Project = "projectA" }
-} 
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                 Networking                                 */
