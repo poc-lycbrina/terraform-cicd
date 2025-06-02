@@ -46,24 +46,41 @@ jobs:
           fetch-depth: 0
 
       - name: Detect file changes
-        id: set
+        id: changes
         run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=50 || true
-          CHANGED=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD)
-          
+          # Determine base ref depending on event type
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="${{ github.event.before }}"
+          fi
+
+          # Fetch and compute changed files
+          git fetch origin --depth=50 || true
+          CHANGED=$(git diff --name-only "$BASE_REF"...HEAD)
+
           echo "Changed files:"
           echo "$CHANGED"
 
-          echo "$CHANGED" | grep 'dev' >/dev/null && echo "changed-dev=true" >> $GITHUB_OUTPUT || echo "changed-dev=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep 'uat' >/dev/null && echo "changed-uat=true" >> $GITHUB_OUTPUT || echo "changed-uat=false" >> $GITHUB_OUTPUT
-          echo "$CHANGED" | grep 'prod' >/dev/null && echo "changed-prod=true" >> $GITHUB_OUTPUT || echo "changed-prod=false" >> $GITHUB_OUTPUT
+          # Set outputs based on paths
+          echo "$CHANGED" | grep 'dev' >/dev/null && echo "changed-dev=true" >> "$GITHUB_OUTPUT" || echo "changed-dev=false" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" | grep 'uat' >/dev/null && echo "changed-uat=true" >> "$GITHUB_OUTPUT" || echo "changed-uat=false" >> "$GITHUB_OUTPUT"
+          echo "$CHANGED" | grep 'prod' >/dev/null && echo "changed-prod=true" >> "$GITHUB_OUTPUT" || echo "changed-prod=false" >> "$GITHUB_OUTPUT"
 
+          # Check if shared files changed
           if echo "$CHANGED" | grep -Ev 'dev|uat|prod' | grep -q '.'; then
-            echo "trigger-all=true" >> $GITHUB_OUTPUT
+            echo "trigger-all=true" >> "$GITHUB_OUTPUT"
           else
-            echo "trigger-all=false" >> $GITHUB_OUTPUT
+            echo "trigger-all=false" >> "$GITHUB_OUTPUT"
           fi
-          
+
+      - name: Print outputs
+        run: |
+          echo "Changed DEV: ${{ steps.changes.outputs.changed-dev }}"
+          echo "Changed UAT: ${{ steps.changes.outputs.changed-uat }}"
+          echo "Changed PROD: ${{ steps.changes.outputs.changed-prod }}"
+          echo "Trigger All: ${{ steps.changes.outputs.trigger-all }}"
+
   # PR to DEV branch
   pr-dev:
     needs: detect-changes
